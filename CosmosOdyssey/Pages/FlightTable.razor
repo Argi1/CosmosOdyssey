@@ -1,0 +1,375 @@
+﻿@using CosmosOdyssey.Extensions
+@inject FlightReservationService FlightService
+
+<br />
+@if (SortedValidProviderCombinations.Count != 0)
+{
+    <div>
+        <table class="table" name="flightTable">
+            <thead>
+                <tr>
+                    <th class="h3 text-center" colspan="5" style="cursor:pointer" @onclick="ToggleTable"><span style="padding-right: 5%" class="oi oi-@TableArrow" /><b>@PlanetNames</b></th>
+                </tr>
+                <tr>
+                    <th>Company Name</th>
+                    <th style="cursor:pointer" @onclick='() => SortTableBy("Price")'><span style="padding-right: 5%" class="oi @PriceArrow" />Price</th>
+                    <th style="cursor:pointer" @onclick='() => SortTableBy("FlightStart")'><span style="padding-right: 5%" class="oi @FlightStartArrow" />Flight Start</th>
+                    <th style="cursor:pointer" @onclick='() => SortTableBy("FlightEnd")'><span style="padding-right: 5%" class="oi @FlightEndArrow" />Flight End</th>
+                    <th style="cursor:pointer" @onclick='() => SortTableBy("FlightTime")'><span style="padding-right: 5%" class="oi @FlightTimeArrow" />Flight Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Show)
+                {
+                    foreach (var providers in SortedValidProviderCombinations)
+                    {
+                        TimeSpan totalTravelTime = TimeSpan.Zero;
+                        decimal totalPrice = 0;
+                        foreach (var provider in providers)
+                        {
+                            TimeSpan travelTime = provider.FlightEnd.Subtract(provider.FlightStart);
+                            totalTravelTime = totalTravelTime.Add(travelTime);
+                            totalPrice += provider.Price;
+
+                            <tr>
+                                <td>@provider.CompanyName</td>
+                                <td>@provider.Price</td>
+                                <td>@provider.FlightStart</td>
+                                <td>@provider.FlightEnd</td>
+                                <td>@travelTime.Days Day(s), @travelTime.Hours Hour(s) And @travelTime.Minutes Minute(s)</td>
+                            </tr>
+                        }
+                        <tr>
+                            <td colspan="2" class="align-middle" style="cursor:pointer" @onclick='() => SortTableBy("TotalPrice")'><span style="padding-right: 5%" class="oi @TotalPriceArrow" /><b>Total Price:</b>  @totalPrice</td>
+                            <td colspan="2" class="align-middle" style="cursor:pointer" @onclick='() => SortTableBy("TotalTravelTime")'><span style="padding-right: 5%" class="oi @TotalTravelTimeArrow" /><b>Total travel time:</b> @totalTravelTime.Days Day(s), @totalTravelTime.Hours Hour(s) And @totalTravelTime.Minutes Minute(s)</td>
+                            <td>
+                                <a class="nav-link " href="/addreservation" @onclick="() => SetChosenProvidersInService(providers)"><span class="oi oi-location" />Select provider(s)</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="5"></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<(Route, List<Provider>)> RoutesProviders { get; set; }
+    [Parameter]
+    public string CompanyNameFilter { get; set; }
+
+    private List<(Route, List<Provider>)> PreviousRoutesProviders;
+
+    private string PreviousCompanyNameFilter;
+
+    private bool Show = false;
+
+    private string PlanetNames;
+
+    private List<List<Provider>> ValidProviderCombinations;
+    private List<List<Provider>> SortedValidProviderCombinations;
+
+    private string TableArrow;
+    private string FlightStartArrow;
+    private string FlightEndArrow;
+    private string FlightTimeArrow;
+    private string PriceArrow;
+    private string TotalTravelTimeArrow;
+    private string TotalPriceArrow;
+    private Order FlightStartOrder;
+    private Order FlightEndOrder;
+    private Order FlightTimeOrder;
+    private Order PriceOrder;
+    private Order TotalTravelTimeOrder;
+    private Order TotalPriceOrder;
+
+    private enum Order
+    {
+        Ascending,
+        Descending,
+        None
+    }
+
+    private void ToggleTable()
+    {
+        Show = !Show;
+        if (Show)
+        {
+            TableArrow = "oi-caret-top";
+        }
+        else
+        {
+            TableArrow = "oi-caret-bottom";
+        }
+    }
+
+    private void SetChosenProvidersInService(List<Provider> providers)
+    {
+        FlightService.ChosenProviders = providers;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (PreviousRoutesProviders != RoutesProviders || PreviousCompanyNameFilter != CompanyNameFilter)
+        {
+            Show = false;
+            TableArrow = "oi-caret-bottom";
+            FlightStartArrow = "oi-elevator";
+            FlightEndArrow = "oi-elevator";
+            FlightTimeArrow = "oi-elevator";
+            PriceArrow = "oi-elevator";
+            TotalTravelTimeArrow = "oi-elevator";
+            TotalPriceArrow = "oi-elevator";
+            FlightStartOrder = Order.None;
+            FlightEndOrder = Order.None;
+            FlightTimeOrder = Order.None;
+            PriceOrder = Order.None;
+            TotalTravelTimeOrder = Order.None;
+            TotalPriceOrder = Order.None;
+
+            PlanetNames = $"From: {RoutesProviders[0].Item1.StartPlanetName } ";
+            ValidProviderCombinations = new List<List<Provider>>();
+
+            List<IEnumerable<Provider>> allProviderCombinations = RoutesProviders.Select(x => x.Item2).CrossAllProvidersForRoute().ToList();
+
+            foreach (var routeProvidersTuple in RoutesProviders)
+            {
+                PlanetNames += $" to: {routeProvidersTuple.Item1.ToPlanetName}";
+            }
+
+            foreach (var providers in allProviderCombinations)
+            {
+                DateTime previousFlightEndTime = DateTime.MinValue;
+
+                if (CompanyNameFilter is not null && CompanyNameFilter != "")
+                {
+                    if (!providers.Any(provider => provider.CompanyName.ToLower() == CompanyNameFilter.ToLower()))
+                    {
+                        goto contLoop;
+                    }
+                }
+
+                foreach (var provider in providers)
+                {
+                    if (DateTime.Compare(provider.FlightStart, previousFlightEndTime) < 0)
+                    {
+                        goto contLoop;
+                    }
+                    previousFlightEndTime = provider.FlightEnd;
+                }
+                ValidProviderCombinations.Add(providers.ToList());
+                contLoop:;
+            }
+            //To keep original list in memory to show it when no sorting has been applied.
+            //Might not be a required feature.
+            SortedValidProviderCombinations = ValidProviderCombinations;
+            //To check if RoutesProviders has changed from the last time the component was rendered.
+            PreviousRoutesProviders = RoutesProviders;
+            PreviousCompanyNameFilter = CompanyNameFilter;
+            allProviderCombinations = new List<IEnumerable<Provider>> { };
+        }
+    }
+
+    private void SortTableBy(string value)
+    {
+        FlightStartArrow = "oi-elevator";
+        FlightEndArrow = "oi-elevator";
+        FlightTimeArrow = "oi-elevator";
+        PriceArrow = "oi-elevator";
+        TotalTravelTimeArrow = "oi-elevator";
+        TotalPriceArrow = "oi-elevator";
+
+        switch (value)
+        {
+            case "FlightStart":
+                if ((int)FlightStartOrder == 2)
+                    FlightStartOrder = Order.Ascending;
+                else
+                    FlightStartOrder += 1;
+
+                switch (FlightStartOrder)
+                {
+                    case Order.Ascending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderBy(x => x.Select(y => y.FlightStart).ElementAt(0)).ToList();
+                        FlightStartArrow = "oi-caret-top";
+                        break;
+                    case Order.Descending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderByDescending(x => x.Select(y => y.FlightStart).ElementAt(0)).ToList();
+                        FlightStartArrow = "oi-caret-bottom";
+                        break;
+                    case Order.None:
+                        SortedValidProviderCombinations = ValidProviderCombinations;
+                        break;
+                }
+
+                FlightEndOrder = Order.None;
+                FlightTimeOrder = Order.None;
+                PriceOrder = Order.None;
+                TotalTravelTimeOrder = Order.None;
+                TotalPriceOrder = Order.None;
+                break;
+
+            case "FlightEnd":
+                if ((int)FlightEndOrder == 2)
+                    FlightEndOrder = Order.Ascending;
+                else
+                    FlightEndOrder += 1;
+
+                switch (FlightEndOrder)
+                {
+                    case Order.Ascending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderBy(x => x.Select(y => y.FlightEnd).ElementAt(0)).ToList();
+                        FlightEndArrow = "oi-caret-top";
+                        break;
+                    case Order.Descending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderByDescending(x => x.Select(y => y.FlightEnd).ElementAt(0)).ToList();
+                        FlightEndArrow = "oi-caret-bottom";
+                        break;
+                    case Order.None:
+                        SortedValidProviderCombinations = ValidProviderCombinations;
+                        break;
+                }
+
+                FlightStartOrder = Order.None;
+                FlightTimeOrder = Order.None;
+                PriceOrder = Order.None;
+                TotalTravelTimeOrder = Order.None;
+                TotalPriceOrder = Order.None;
+                break;
+
+            case "FlightTime":
+                if ((int)FlightTimeOrder == 2)
+                    FlightTimeOrder = Order.Ascending;
+                else
+                    FlightTimeOrder += 1;
+
+                switch (FlightTimeOrder)
+                {
+                    case Order.Ascending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderBy(x => x.Select(y => y.FlightEnd.Subtract(y.FlightStart)).ElementAt(0)).ToList();
+                        FlightTimeArrow = "oi-caret-top";
+                        break;
+                    case Order.Descending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderByDescending(x => x.Select(y => y.FlightEnd.Subtract(y.FlightStart)).ElementAt(0)).ToList();
+                        FlightTimeArrow = "oi-caret-bottom";
+                        break;
+                    case Order.None:
+                        SortedValidProviderCombinations = ValidProviderCombinations;
+                        break;
+                }
+
+                FlightEndOrder = Order.None;
+                FlightStartOrder = Order.None;
+                PriceOrder = Order.None;
+                TotalTravelTimeOrder = Order.None;
+                TotalPriceOrder = Order.None;
+                break;
+            case "Price":
+                if ((int)PriceOrder == 2)
+                    PriceOrder = Order.Ascending;
+                else
+                    PriceOrder += 1;
+
+                switch (PriceOrder)
+                {
+                    case Order.Ascending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderBy(x => x.Select(y => y.Price).ElementAt(0)).ToList();
+                        PriceArrow = "oi-caret-top";
+                        break;
+                    case Order.Descending:
+                        SortedValidProviderCombinations = ValidProviderCombinations.OrderByDescending(x => x.Select(y => y.Price).ElementAt(0)).ToList();
+                        PriceArrow = "oi-caret-bottom";
+                        break;
+                    case Order.None:
+                        SortedValidProviderCombinations = ValidProviderCombinations;
+                        break;
+                }
+
+                FlightEndOrder = Order.None;
+                FlightStartOrder = Order.None;
+                FlightTimeOrder = Order.None;
+                TotalTravelTimeOrder = Order.None;
+                TotalPriceOrder = Order.None;
+                break;
+
+            case "TotalPrice":
+                if ((int)TotalPriceOrder == 2)
+                    TotalPriceOrder = Order.Ascending;
+                else
+                    TotalPriceOrder += 1;
+
+                switch (TotalPriceOrder)
+                {
+                    case Order.Ascending:
+                        SortedValidProviderCombinations.Sort((l, r) => l.Select(x => x.Price).Sum().CompareTo(r.Select(y => y.Price).Sum()));
+                        TotalPriceArrow = "oi-caret-top";
+                        break;
+                    case Order.Descending:
+                        SortedValidProviderCombinations.Sort((l, r) => r.Select(x => x.Price).Sum().CompareTo(l.Select(y => y.Price).Sum()));
+                        TotalPriceArrow = "oi-caret-bottom";
+                        break;
+                    case Order.None:
+                        SortedValidProviderCombinations = ValidProviderCombinations;
+                        break;
+                }
+
+                FlightEndOrder = Order.None;
+                FlightStartOrder = Order.None;
+                FlightTimeOrder = Order.None;
+                PriceOrder = Order.None;
+                TotalTravelTimeOrder = Order.None;
+                break;
+
+            case "TotalTravelTime":
+                if ((int)TotalTravelTimeOrder == 2)
+                    TotalTravelTimeOrder = Order.Ascending;
+                else
+                    TotalTravelTimeOrder += 1;
+
+                switch (TotalTravelTimeOrder)
+                {
+                    case Order.Ascending:
+                        SortedValidProviderCombinations.Sort((l, r) =>
+                                                                 l.Select(x =>
+                                                                        x.FlightEnd
+                                                                        .Subtract(x.FlightStart).Ticks)
+                                                                 .Sum()
+                                                                 .CompareTo(r.Select(y =>
+                                                                                y.FlightEnd
+                                                                                .Subtract(y.FlightStart).Ticks)
+                                                                            .Sum()));
+                        TotalTravelTimeArrow = "oi-caret-top";
+                        break;
+                    case Order.Descending:
+                        SortedValidProviderCombinations.Sort((l, r) =>
+                                                                 r.Select(x =>
+                                                                        x.FlightEnd
+                                                                        .Subtract(x.FlightStart).Ticks)
+                                                                 .Sum()
+                                                                 .CompareTo(l.Select(y =>
+                                                                                y.FlightEnd
+                                                                                .Subtract(y.FlightStart).Ticks)
+                                                                            .Sum()));
+
+                        TotalTravelTimeArrow = "oi-caret-bottom";
+                        break;
+                    case Order.None:
+                        SortedValidProviderCombinations = ValidProviderCombinations;
+                        break;
+                }
+
+                FlightEndOrder = Order.None;
+                FlightStartOrder = Order.None;
+                FlightTimeOrder = Order.None;
+                PriceOrder = Order.None;
+                TotalPriceOrder = Order.None;
+                break;
+            default:
+                break;
+        }
+    }
+}

@@ -1,0 +1,32 @@
+version: '3.4'
+
+services:
+   db:
+    image: mysql:8.0
+    restart: always
+    container_name: cosmos_odyssey_db
+    environment:
+      MYSQL_DATABASE: 'db'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_PASSWORD: 'password'
+    ports:
+      - 3306:3306
+    expose:
+      - '3306'
+    volumes:
+      - sqldb:/var/lib/mysql 
+
+   cosmosodyssey:
+    image: ${DOCKER_REGISTRY-}cosmosodyssey
+    container_name: cosmos_odyssey
+    build:
+      context: .
+      dockerfile: CosmosOdyssey\Dockerfile
+    ports:
+      - "8000:80"
+    depends_on:
+      - db
+
+volumes:
+  sqldb:

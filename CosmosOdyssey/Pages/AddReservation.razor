@@ -1,0 +1,136 @@
+﻿@page "/addreservation"
+@inject FlightReservationService FlightService
+@inject NavigationManager NavManager
+
+
+<h1>Reservation</h1>
+@if (FlightService.ChosenProviders is not null)
+{
+    <br />
+    <h3>Your selected flight and providers.</h3>
+    <br />
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th class="h3" colspan="5"><b>@ChosenPlanets</b></th>
+            </tr>
+            <tr>
+                <th>Company Name</th>
+                <th>Price</th>
+                <th>Flight Start</th>
+                <th>Flight End</th>
+                <th>Flight Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var provider in ChosenProviders)
+            {
+                TimeSpan travelTime = provider.FlightEnd.Subtract(provider.FlightStart);
+                <tr>
+                    <td>@provider.CompanyName</td>
+                    <td>@provider.Price</td>
+                    <td>@provider.FlightStart</td>
+                    <td>@provider.FlightEnd</td>
+                    <td>@travelTime.Days Day(s), @travelTime.Hours Hour(s) And @travelTime.Minutes Minute(s)</td>
+                </tr>
+            }
+            <tr>
+                <td colspan="2" class="align-middle"><b>Total Price:</b> @TotalPrice</td>
+                <td colspan="3" class="align-middle"><b>Total travel time:</b> @TotalTravelTime.Days Day(s), @TotalTravelTime.Hours Hour(s) And @TotalTravelTime.Minutes Minute(s)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br />
+    <h4>Please enter your name to make a reservation</h4>
+
+
+    <form @onsubmit="CreateReservation">
+        <div style="display:flex; justify-content:left; flex-wrap: initial;">
+            <input type="text" style="margin-right:1%" placeholder="First name" @bind="@FirstName" required />
+            <input type="text" style="margin-right:1%" placeholder="Last name" @bind="@LastName" required />
+            <button type="submit" class="align-self-md-auto btn-primary">Add reservation</button>
+        </div>
+    </form>
+}
+else
+{
+    <p>Loading...</p>
+
+}
+
+@code {
+    List<Route> ChosenRoutes;
+    List<Provider> ChosenProviders;
+
+    TimeSpan TotalTravelTime;
+    Decimal TotalPrice;
+
+    string FirstName;
+    string LastName;
+    string ChosenPlanets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ChosenRoutes = new List<Route>();
+        ChosenProviders = FlightService.ChosenProviders;
+        TotalTravelTime = TimeSpan.Zero;
+        TotalPrice = 0;
+
+        foreach (var provider in ChosenProviders)
+        {
+            var leg = await FlightService.GetLegAsync(provider);
+
+            ChosenRoutes.Add(await FlightService.GetRouteAsync(leg));
+
+            TimeSpan travelTime = provider.FlightEnd.Subtract(provider.FlightStart);
+            TotalTravelTime = TotalTravelTime.Add(travelTime);
+            TotalPrice += provider.Price;
+        }
+
+        ChosenPlanets = $"From: {ChosenRoutes.ElementAt(0).StartPlanetName} ";
+
+        foreach (var route in ChosenRoutes)
+        {
+            ChosenPlanets += $" to: {route.ToPlanetName}";
+        }
+    }
+
+    private async Task CreateReservation()
+    {
+        if (FlightService.LatestPricelistValidUntil.CompareTo(DateTime.UtcNow) > 0)
+        {
+            if (FirstName != "" && LastName != "" && FirstName is not null && LastName is not null)
+            {
+                var orderGuid = Guid.NewGuid();
+                List<Reservation> reservations = new List<Reservation>();
+
+                foreach (var item in ChosenProviders.Zip(ChosenRoutes))
+                {
+                    Reservation reservation = new Reservation
+                    {
+                        ReservationId = Guid.NewGuid(),
+                        OrderId = orderGuid,
+                        FirstName = FirstName,
+                        LastName = LastName,
+                        TotalPrice = TotalPrice,
+                        TotalTravelTime = TotalTravelTime.ToString(),
+                        ProviderId = item.First.Id,
+                        CompanyName = item.First.CompanyName,
+                        RouteId = item.Second.Id,
+                        StartPlanetName = item.Second.StartPlanetName,
+                        ToPlanetName = item.Second.ToPlanetName
+                    };
+                    reservations.Add(reservation);
+                }
+                await FlightService.InsertReservation(reservations);
+                NavManager.NavigateTo("/addreservation/true", true);
+            }
+        }
+        else
+        {
+            NavManager.NavigateTo("/addreservation/false/timeout", true);
+        }
+    }
+}

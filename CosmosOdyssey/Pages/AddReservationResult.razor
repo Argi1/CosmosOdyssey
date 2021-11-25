@@ -1,0 +1,24 @@
+﻿@page "/addreservation/{result:bool}"
+
+@if (!Result)
+{
+    <div class="alert alert-danger" role="alert">
+        <h3>This flight has expired!</h3>
+        <p>Your reservation was not added. Please go back to flight list page to select a new flight.</p>
+    </div>
+}
+else
+{
+    <div class="alert alert-success" role="alert">
+        <h3>Thank you</h3>
+        <p>Your reservation was added successfully!</p>
+    </div>
+
+}
+
+@code {
+    [Parameter]
+    public bool Result { get; set; }
+    [Parameter]
+    public string Reason { get; set; }
+}

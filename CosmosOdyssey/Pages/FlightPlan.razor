@@ -1,0 +1,98 @@
+﻿@page "/flightplan"
+@inject FlightReservationService FlightService
+
+
+<h1>Flight Plan</h1>
+
+<br />
+@if (IsErrorActive)
+{
+    <div class="alert alert-danger" role="alert">
+        <h3>@Title</h3>
+        <p>@Message</p>
+    </div>
+}
+
+<div class="text-center">
+    @if (FromPlanets is null)
+    {
+        <p><em>Loading... !</em></p>
+    }
+    else
+    {
+        <span class="oi oi-arrow-top"></span>
+        <label for="fromPlanets">From: </label>
+
+        <select class="custom-select custom-select-md" name="fromPlanets" @bind="SelectedFromPlanet">
+            <option value=""></option>
+
+            @foreach (var planet in FromPlanets)
+            {
+                <option value="@planet">@planet</option>
+            }
+        </select>
+
+        <span class="oi oi-arrow-bottom" style="padding-left:1%"></span>
+        <label for="toPlanets">To: </label>
+
+        <select class="custom-select custom-select-md" name="toPlanets" @bind="SelectedToPlanet">
+            <option value=""></option>
+            @foreach (var planet in ToPlanets)
+            {
+                <option value="@planet">@planet</option>
+            }
+
+        </select>
+        <button class="align-self-md-auto btn-primary" @onclick="OnSearch">Search</button>
+    }
+</div>
+
+<br />
+<br />
+
+@if (AllRoutesProviders is not null)
+{
+    if (AllRoutesProviders.Count != 0 && ShowTables)
+    {
+        <p>Sort by</p>
+        <div style="display:flex; justify-content:left; flex-wrap: initial;" class="text-center">
+            <input class="custom-file custom-select-md" type="text" style="margin-right:1%;" placeholder="Company name" @bind="SortCompanyNameText" />
+            <button class="align-self-md-auto btn-primary" @onclick="SetCompanyNameFilter">Sort</button>
+        </div>
+        @if (SortCompanyName is not null)
+        {
+            <br />
+            <Button class="alert-danger alert" style="cursor:pointer;" @onclick="ResetCompanyNameFilter"><span class="oi oi-x"></span>@SortCompanyName</Button>           
+        }
+        foreach (var routesProviders in AllRoutesProviders)
+        {
+            <FlightTable RoutesProviders="routesProviders" CompanyNameFilter="@SortCompanyName" />
+        }
+    }
+    else
+    {
+        <h3 class="text-center">No available flights!</h3>
+    }
+}
+
+
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FlightService.SetLatestPricelist();
+        Routes = await FlightService.GetAllRoutesAsync();
+
+        FromPlanets = Routes.OrderBy(x => x.StartPlanetName).Select(x => x.StartPlanetName).Distinct().ToList();
+        ToPlanets = Routes.OrderBy(x => x.ToPlanetName).Select(x => x.ToPlanetName).Distinct().ToList();
+    }
+
+    public void ShowError(string title, string message)
+    {
+        IsErrorActive = true;
+        Title = title;
+        Message = message;
+        StateHasChanged();
+    }
+}
