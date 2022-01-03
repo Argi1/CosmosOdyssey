@@ -6,7 +6,6 @@ services:
     restart: always
     container_name: cosmos_odyssey_db
     environment:
-      MYSQL_DATABASE: 'db'
       MYSQL_USER: 'user'
       MYSQL_PASSWORD: 'password'
       MYSQL_ROOT_PASSWORD: 'password'
