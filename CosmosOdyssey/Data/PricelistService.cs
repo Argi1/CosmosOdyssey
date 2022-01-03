@@ -19,14 +19,19 @@ namespace CosmosOdyssey.Data
         public PricelistService(IDbContextFactory<DatabaseContext> dbContext)
         {
             _dbContext = dbContext;
+
+            //Because PricelistService is the first service to run, i check if the database exists.
+            var dbCreationContext = _dbContext.CreateDbContext();
+            dbCreationContext.Database.EnsureCreated();
         }
 
         // Method that is constantly running in the background.
         // Checks the expiration time of the latest Pricelist, waits until it passes, then gets new info from /
-        //  ... the api and stores it in the database. After that removes the oldest Pricelist and any data that
+        //  ... the api and stores it in the database. If there is more than 15 Pricelists, removes the oldest Pricelist and any data that
         //  ... is connected to it.
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken) 
         {
+            await Task.Delay(5000);
             while (!stoppingToken.IsCancellationRequested)
             {
                 var nextRunTime = GetValidUntilDate().Subtract(DateTime.UtcNow);
@@ -149,7 +154,7 @@ namespace CosmosOdyssey.Data
             {
                 var validUntil = dbContext.Pricelists.OrderByDescending(x => x.ValidUntil).FirstOrDefault();
 
-                if(validUntil is null)
+                if (validUntil is null)
                 {
                     return DateTime.MinValue;
                 }
@@ -178,7 +183,7 @@ namespace CosmosOdyssey.Data
                     .Id;
 
                 dbContext.RemoveRange(dbContext.Pricelists.Where(x => x.Id == oldestId));
-                
+
                 dbContext.SaveChanges();
             }
         }
