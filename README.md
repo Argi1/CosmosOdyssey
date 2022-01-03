@@ -6,7 +6,7 @@ The goal was to create a webpage where users can choose their starting and desti
 and providers for all those routes. Then the user can select a flight and be forwarded to a page where they can reserv that flight.
 
 All available routes can be seen on the picture below
-![Route Image](https://imgur.com/a/7kb30jk)
+![Img](https://i.ibb.co/qpsM2LP/beb41fd47cb1a28e66ee3619083dc1a1.png)
 
 The assignment had a webpage that the .NET app checks to get it's pricelist from. That pricelist has a valid until period and after it expires,
 the webpage will update and this .NET app will request new data from it. After 15 updates it will start deleting the oldest pricelists so that there
