@@ -1,6 +1,17 @@
 # Cosmos Odyssey
 This project uses docker to run the .net app and a MySQL database
 
+This is an test assignment done for a job interview
+The goal was to create a webpage where users can choose their starting and destination planet. Then they can see all the possible routes 
+and providers for all those routes. Then the user can select a flight and be forwarded to a page where they can reserv that flight.
+
+All available routes can be seen on the picture below
+![Route Image](https://imgur.com/a/7kb30jk)
+
+The assignment had a webpage that the .NET app checks to get it's pricelist from. That pricelist has a valid until period and after it expires,
+the webpage will update and this .NET app will request new data from it. After 15 updates it will start deleting the oldest pricelists so that there
+is always 15 pricelists.
+
 ## Getting Started
 
 ### Requirements
@@ -8,35 +19,11 @@ This project uses docker to run the .net app and a MySQL database
 ### Set-up
 1. Clone the repository
 2. On command line navigate to the cloned repository
-3. Install dotnet-ef
-    ```sh
-    dotnet new tool-manifest
-    dotnet tool install --local dotnet-ef
-    ```
-4. Run docker-compose to launch the MySQL database
-   ```sh
-   docker-compose up -d db
-   ```
-5. Run database migration and update commands to setup the databse (one time only)
-   ```sh
-   dotnet ef migrations add Initial
-   dotnet ef database update
-   ```
-6. Change the connection string in ..\CosmosOdyssey\Data\DatabaseContext.cs
-
-   From
-   ```sh
-   optionsBuilder.UseMySQL("Server = 127.0.0.1; Database = db; Uid = user; Pwd = password;");
-   ```
-   To
-   ```sh
-   optionsBuilder.UseMySQL("Server = db; Database = db; Uid = user; Pwd = password;");
-   ```
-7. Run docker-compose again to launch the .NET app
+3. Run docker-compose to launch the .NET app and MySql database
    ```sh
    docker-compose up -d
    ```
-8. Page should now be up and running. Accessible at http://localhost:8000
+4. Page should now be up and running. Accessible at http://localhost:8000
  
 ### Finishing up
  * To shutdown the running container:
