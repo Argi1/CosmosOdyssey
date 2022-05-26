@@ -14,9 +14,11 @@ is always 15 pricelists.
 
 ## Getting Started
 
-### Requirements
+### Docker setup
+
+#### Requirements
 * [Docker & Docker-compose](https://docs.docker.com/compose/install/) 
-### Set-up
+#### Set-up
 1. Clone the repository
 2. On command line navigate to the cloned repository
 3. Run docker-compose to launch the .NET app and MySql database
@@ -25,12 +27,21 @@ is always 15 pricelists.
    ```
 4. Page should now be up and running. Accessible at http://localhost:8000
  
-### Finishing up
+#### Finishing up
  * To shutdown the running container:
     ```sh
     docker-compose down
     ```
- * To start the container back use:
+ * To start the container back up, use:
     ```sh
     docker-compose up -d
     ```
+### IDE setup with IIS Express and local MySql server
+If you want to run this project without docker you can use the IIS Express provided by Visual Studio and a local MySql database.
+
+1. Clone the repository
+2. Change the database connection in Data/DatabaseContext.cs to connect to your local MySql database (Example given in comment)
+3. Start up your local database
+4. Run the project using IIS Express
+5. Wait for 20 seconds to let the program create the required tables and fill them with data fetched from the webpage given in the assignment
+6. Page should now be fully functional and accessible at http://localhost:8000
